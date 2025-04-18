@@ -36,3 +36,6 @@ vms_config = {
 ## Install VMS Server
 
 You need to install the VMS server from http://surveillance-logic.com. Please download and install it before using this MCP server.
+
+Also, download the vmspy Python library from the link below and extract the files into the mcp_vms directory:
+https://sourceforge.net/projects/security-vms/files/vmspy-1.2-python312-x64.zip/download
