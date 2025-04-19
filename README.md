@@ -76,6 +76,7 @@ For alternative installation methods, see the [official UV documentation](https:
 
 The mcp-vms directory should look like this:
 
+```shell
 mcp-vms/
 ├── .gitignore
 ├── .python-version
@@ -90,3 +91,4 @@ mcp-vms/
 ├── avutil-59.dll
 ├── swresample-5.dll
 ├── swscale-8.dll
+```
