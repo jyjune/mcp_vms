@@ -376,44 +376,6 @@ async def show_playback_video(ch_no: int, year: int, month: int, day: int, hour:
         ctx.error(f"An unexpected error occurred: {str(e)}")
         return False
 
-async def main():
-    if False and vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
-        if True:
-            channels = vms_utils.get_channel_list()
-            print("get_channel_list: ")
-            print(channels)
-        if True:
-            recordingDates = vms_utils.get_recording_dates(2025,4)
-            print("get_recording_dates: ")
-            print(recordingDates)
-        if True:
-            recordingTimes = vms_utils.get_recording_times(5, 0, 2025, 4, 6)
-            print("get_recording_times: ")
-            print(recordingTimes)
-    if True:
-        try:
-            img = fetch_recorded_image(4, 0, 2025, 4, 17, 10, 19, 38, ctx=None)
-            #img = fetch_live_image(5, 0, ctx=None)
-            #imgs = await fetch_images(["https://www.microwavejournal.com/ext/resources/images/Newsletters/News/News_1/IMFW-2024-featured.jpg"], ctx=None)
-            #img = imgs[0]
-            print("------------------------")
-            if img is not None:
-                with open("vms_image.jpg", "wb") as f:
-                    f.write(img.data)
-            else:
-                print("Failed to fetch the image.")
-
-            print("------------------------")
-            times = await get_recording_times(4, 0, 2025,4, 9, ctx=None)
-            print (times)
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        print("ended:")
-
 # Run the async main function
 if __name__ == "__main__":
-    if True:
-        mcp.run(transport='stdio')
-    else:
-        asyncio.run(main())
+    mcp.run(transport='stdio')
