@@ -66,7 +66,7 @@ For alternative installation methods, see the [official UV documentation](https:
 
 ### 2.Install VMS Server
    Download and install the VMS server from:  
-   [http://surveillance-logic.com](http://surveillance-logic.com)  
+   [http://surveillance-logic.com/en/download.html](http://surveillance-logic.com/en/download.html)
    (Required before using this MCP server)
 
 ### 3.Install Python Dependencies
