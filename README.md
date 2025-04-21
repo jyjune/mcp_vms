@@ -71,7 +71,7 @@ For alternative installation methods, see the [official UV documentation](https:
 
 ### 3.Install Python Dependencies
    Download the vmspy library:  
-   [vmspy-1.2-python312-x64.zip](https://sourceforge.net/projects/security-vms/files/vmspy-1.2-python312-x64.zip/download)  
+   [vmspy1.3-python3.12-x64.zip](https://sourceforge.net/projects/security-vms/files/vmspy1.3-python3.12-x64.zip/download)
    Extract the contents into your `mcp_vms` directory
 
 The mcp-vms directory should look like this:
