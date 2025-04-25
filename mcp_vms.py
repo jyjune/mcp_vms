@@ -34,7 +34,7 @@ console_handler = logging.StreamHandler(sys.stderr)
 console_handler.setFormatter(formatter)
 
 # Set up our logger
-logger = logging.getLogger("image-mcp")
+logger = logging.getLogger("vms-mcp")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
