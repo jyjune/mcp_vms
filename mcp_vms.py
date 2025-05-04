@@ -78,12 +78,45 @@ async def get_channels(ctx: Context) -> List[Dict[str, Any]]:
         else:
             error_msg = vms_utils.get_error()
             ctx.error(f"Failed to get channel list: {error_msg}")
-            logger.debug(f"Failed to get channel list: {channels}")
+            logger.debug(f"Failed to get channel list: {error_msg}")
             channels = []
         return channels
     except Exception as e:
         logger.exception("Error in get_names")
         ctx.error(f"Failed to retrieve names: {str(e)}")
+        return []
+
+@mcp.tool()
+async def get_channel_groups(ctx: Context) -> List[Dict[str, Any]]:
+    """
+    Return the list of channel groups along with their member channels.
+
+    Each group contains the following keys:
+    - title: The name of the group.
+    - group_idx: The index of the group.
+    - channels: A list of channels in the group, where each channel contains:
+        - ch_no: The channel number.
+        - title: The name or title of the channel.
+
+    Args:
+        ctx: The context object for logging or error handling.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents a group and its channels.
+    """
+    try:
+        if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
+            groups = vms_utils.get_group_list()
+            logger.debug(f"Retrieved channel groups: {groups}")
+            return groups
+        else:
+            error_msg = vms_utils.get_error()
+            ctx.error(f"Failed to retrieve channel groups: {error_msg}")
+            logger.error(f"Failed to retrieve channel groups: {error_msg}")
+            return []
+    except Exception as e:
+        logger.exception("Error in get_channel_groups")
+        ctx.error(f"Failed to retrieve channel groups: {str(e)}")
         return []
 
 @mcp.tool()
@@ -159,6 +192,46 @@ async def get_recording_times(ch_no: int, sub_idx: int, year: int, month: int, d
         ctx.error(f"Failed to retrieve recording times for channel {ch_no}, sub-channel {sub_idx} on {year}-{month}-{day}: {str(e)}")
         return []
 
+@mcp.tool()
+async def get_events(ch_no: int, year: int, month: int, day: int, num_days: int = 1, ctx: Context = None) -> List[Dict[str, Any]]:
+    """
+    Retrieve events for a specific date and channel.
+
+    If the channel number is zero (0), events for all channels are retrieved.
+
+    Args:
+        ch_no: The channel number. Use 0 to retrieve events for all channels.
+        year: The year of the events to retrieve.
+        month: The month of the events to retrieve.
+        day: The day of the events to retrieve.
+        num_days: The number of days to retrieve events for (default: 1).
+        ctx: The context object for logging or error handling.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents an event with the following keys:
+        - ch_no: The channel number.
+        - type: The type of the event (e.g., "Motion", "Sensor").
+        - time: The time of the event in ISO 8601 format.
+        - duration: The duration of the event in seconds.
+    """
+    try:
+        if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
+            events = vms_utils.get_events(ch_no, year, month, day, num_days)
+            logger.debug(f"Retrieved events for channel {ch_no} on {year}-{month}-{day} for {num_days} day(s): {events}")
+            return events
+        else:
+            error_msg = vms_utils.get_error()
+            if ctx:
+                ctx.error(f"Failed to retrieve events for channel {ch_no}: {error_msg}")
+            logger.error(f"Failed to retrieve events for channel {ch_no}: {error_msg}")
+            return []
+    except Exception as e:
+        logger.exception(f"Error while retrieving events for channel {ch_no} on {year}-{month}-{day}: {str(e)}")
+        if ctx:
+            ctx.error(f"An unexpected error occurred: {str(e)}")
+        return []
+
+
 @mcp.tool() 
 def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context) -> Image | None:
     """
@@ -203,7 +276,7 @@ def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context) -> Image | None:
         return {"error": error_msg}
 
 @mcp.tool() 
-def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, day: int, hour: int, minute: int, second: int, ctx: Context) -> Image | None:
+async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, day: int, hour: int, minute: int, second: int, ctx: Context) -> Image | None:
     """
     Fetch a specific recorded frame image from a video channel.
 
@@ -330,12 +403,12 @@ async def show_live_video(ch_no: int, sub_idx: int, ctx: Context) -> bool:
     try:
         if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']) \
             and vms_utils.show_live(ch_no, sub_idx):
-            logger.debug(f"Live video started for channel {ch_no}, sub-channel {sub_idx}.")
+            logger.debug(f"Show live video for channel {ch_no}, sub-channel {sub_idx}.")
             return True
         else:
             error_msg = vms_utils.get_error()
             ctx.error(f"Failed to show live video for channel {ch_no}, sub-channel {sub_idx}: {error_msg}")
-            logger.error(error_msg)
+            logger.error(f"Failed to show live video for channel {ch_no}, sub-channel {sub_idx}: {error_msg}")
             return False
     except Exception as e:
         logger.exception(f"Error while showing live video for channel {ch_no}, sub-channel {sub_idx}: {str(e)}")
@@ -373,6 +446,66 @@ async def show_playback_video(ch_no: int, year: int, month: int, day: int, hour:
             return False
     except Exception as e:
         logger.exception(f"Error while showing playback video for channel {ch_no}, sub-channel {sub_idx} at {year}-{month}-{day} {hour}:{minute}:{second}: {str(e)}")
+        ctx.error(f"An unexpected error occurred: {str(e)}")
+        return False
+
+@mcp.tool()
+async def show_group_live_video(group_idx: int, ctx: Context) -> bool:
+    """
+    Show the live video streams of a specific group in the VMS program.
+
+    Args:
+        group_idx: The index of the group.
+        ctx: The context object for logging or error handling.
+
+    Returns:
+        True if the operation succeeds, False otherwise.
+    """
+    try:
+        if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']) \
+            and vms_utils.show_group_live(group_idx):
+            logger.debug(f"Live video started for group {group_idx}.")
+            return True
+        else:
+            error_msg = vms_utils.get_error()
+            ctx.error(f"Failed to show live video for group {group_idx}: {error_msg}")
+            logger.error(f"Failed to show live video for group {group_idx}: {error_msg}")
+            return False
+    except Exception as e:
+        logger.exception(f"Error while showing live video for group {group_idx}: {str(e)}")
+        ctx.error(f"An unexpected error occurred: {str(e)}")
+        return False
+
+@mcp.tool()
+async def show_group_playback_video(group_idx: int, year: int, month: int, day: int, hour: int, minute: int, second: int, ctx: Context) -> bool:
+    """
+    Show the playback video streams of a specific group at a specific timestamp in the VMS program.
+
+    Args:
+        group_idx: The index of the group.
+        year: The year of the playback timestamp.
+        month: The month of the playback timestamp.
+        day: The day of the playback timestamp.
+        hour: The hour of the playback timestamp.
+        minute: The minute of the playback timestamp.
+        second: The second of the playback timestamp.
+        ctx: The context object for logging or error handling.
+
+    Returns:
+        True if the operation succeeds, False otherwise.
+    """
+    try:
+        if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']) \
+            and vms_utils.show_group_playback(group_idx, year, month, day, hour, minute, second):
+            logger.debug(f"Playback video started for group {group_idx} at {year}-{month}-{day} {hour}:{minute}:{second}.")
+            return True
+        else:
+            error_msg = vms_utils.get_error()
+            ctx.error(f"Failed to show playback video for group {group_idx} at {year}-{month}-{day} {hour}:{minute}:{second}: {error_msg}")
+            logger.error(f"Failed to show playback video for group {group_idx} at {year}-{month}-{day} {hour}:{minute}:{second}: {error_msg}")
+            return False
+    except Exception as e:
+        logger.exception(f"Error while showing playback video for group {group_idx} at {year}-{month}-{day} {hour}:{minute}:{second}: {str(e)}")
         ctx.error(f"An unexpected error occurred: {str(e)}")
         return False
 
