@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/jyjune-mcp-vms-badge.png)](https://mseep.ai/app/jyjune-mcp-vms)
+
 # MCP Server - VMS Integration
 
 A Model Context Protocol (MCP) server designed to connect to a CCTV recording program (VMS) to retrieve recorded and live video streams. It also provides tools to control the VMS software, such as showing live or playback dialogs for specific channels at specified times.
