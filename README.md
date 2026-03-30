@@ -17,6 +17,10 @@ A Model Context Protocol (MCP) server designed to connect to a CCTV recording pr
 - Control PTZ (Pan-Tilt-Zoom) cameras by moving them to preset positions.
 - Comprehensive error handling and logging.
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/jyjune-mcp-vms).
+
 ## Prerequisites
 
 - Python 3.12+
