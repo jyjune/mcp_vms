@@ -8,7 +8,23 @@ import time
 from io import BytesIO
 from datetime import datetime
 from PIL import Image as PILImage
-from mcp.server.fastmcp import FastMCP, Image, Context
+
+# --- MCP SDK v2 ---------------------------------------------------------
+# v1: from mcp.server.fastmcp import FastMCP, Image, Context
+# v2: FastMCP was renamed MCPServer, and everything that used to live under
+#     mcp.server.fastmcp.* (including Image and Context) now lives under
+#     mcp.server.mcpserver.*
+from mcp.server import MCPServer
+from mcp.server.mcpserver import Image, Context
+# NOTE: mcp.server.mcpserver.utilities.types.Image is NOT a Pydantic model,
+#       so it cannot be used as a return type annotation for @mcp.tool() —
+#       Pydantic raises PydanticSchemaGenerationError when it tries to build
+#       a schema for it.  Use mcp.types.ImageContent (a proper BaseModel)
+#       as the return type instead; the Image helper is still used internally
+#       to build the ImageContent via Image.to_image_content().
+from mcp.types import ImageContent
+# -------------------------------------------------------------------------
+
 from typing import List, Dict, Any
 from mcp_vms_config import vms_config
 
@@ -60,8 +76,8 @@ logger.addHandler(console_handler)
 # Prevent double logging
 logger.propagate = False
 
-# Create a FastMCP server instance
-mcp = FastMCP("image-service")
+# Create an MCPServer instance (v1: FastMCP("image-service"))
+mcp = MCPServer("image-service")
 
 # Create vmspy instances
 vms_live_video = vmspy.live_video()
@@ -282,7 +298,7 @@ async def get_archived_files(ctx: Context = None) -> List[Dict[str, Any]]:
 
 
 @mcp.tool() 
-async def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context = None) -> Image | None:
+async def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context = None) -> ImageContent | None:
     """
     Fetch a specific live frame image from a video channel.
 
@@ -294,7 +310,7 @@ async def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context = None) -> Ima
         ctx: The context object for logging or error handling.
 
     Returns:
-        An Image object containing the frame image, or None if the operation fails.
+        An ImageContent object containing the frame image, or None if the operation fails.
     """
     if vms_live_video.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
         vms_live_video.set_image_size(vms_config['img_width'], vms_config['img_height'])
@@ -315,15 +331,15 @@ async def fetch_live_image(ch_no: int, sub_idx: int, ctx: Context = None) -> Ima
         image_data = img_byte_arr.getvalue()
 
         logger.debug(f"Fetched live image for channel {ch_no}, sub-channel {sub_idx}.")
-        return Image(data=image_data, format="jpeg")
+        return Image(data=image_data, format="jpeg").to_image_content()
     else:
         error_msg = f"Failed to initialize connection to retrieve recording times for channel {ch_no}, sub-channel {sub_idx}."
         if ctx: ctx.error(error_msg)
         logger.error(error_msg)
-        return {"error": error_msg}
+        return None
 
 @mcp.tool() 
-async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, day: int, hour: int, minute: int, second: int, ctx: Context = None) -> Image | None:
+async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, day: int, hour: int, minute: int, second: int, ctx: Context = None) -> ImageContent | None:
     """
     Fetch a specific recorded frame image from a video channel.
 
@@ -341,7 +357,7 @@ async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, 
         ctx: The context object for logging or error handling.
 
     Returns:
-        An Image object containing the frame image, or None if the operation fails.
+        An ImageContent object containing the frame image, or None if the operation fails.
     """
     if vms_playback.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
         vms_playback.set_image_size(vms_config['img_width'], vms_config['img_height'])
@@ -350,7 +366,7 @@ async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, 
         frame_image, frame_info = vms_playback.get_image(ch_no, year, month, day, hour, minute, second, sub_idx)
 
         if frame_image is None:
-            error_msg = f"Failed to fetch recorded image for channel {ch_no}, sub-channel {sub_idx} at {year}-{month}-{day} {hour}:{minute}:{second}. ({frame_info["error"]})"
+            error_msg = f"Failed to fetch recorded image for channel {ch_no}, sub-channel {sub_idx} at {year}-{month}-{day} {hour}:{minute}:{second}. ({frame_info['error']})"
             if ctx: ctx.error(error_msg)
             logger.error(error_msg)
             return None
@@ -362,15 +378,15 @@ async def fetch_recorded_image(ch_no: int, sub_idx: int, year: int, month: int, 
         image_data = img_byte_arr.getvalue()
 
         logger.debug(f"Fetched recorded image for channel {ch_no}, sub-channel {sub_idx} at {year}-{month}-{day} {hour}:{minute}:{second}.")
-        return Image(data=image_data, format="jpeg")
+        return Image(data=image_data, format="jpeg").to_image_content()
     else:
         error_msg = f"Failed to initialize connection to retrieve recording times for channel {ch_no}, sub-channel {sub_idx} on {year}-{month}-{day}."
         if ctx: ctx.error(error_msg)
         logger.error(error_msg)
-        return {"error": error_msg}
+        return None
 
 @mcp.tool() 
-async def fetch_archived_file_image(file_id: int, timestamp: int, ctx: Context = None) -> Image | None:
+async def fetch_archived_file_image(file_id: int, timestamp: int, ctx: Context = None) -> ImageContent | None:
     """
     Fetch a specific frame image from an archived video file.
 
@@ -382,7 +398,7 @@ async def fetch_archived_file_image(file_id: int, timestamp: int, ctx: Context =
         ctx: The context object for logging or error handling.
 
     Returns:
-        An Image object containing the frame image, or None if the operation fails.
+        An ImageContent object containing the frame image, or None if the operation fails.
     """
     if vms_playback.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
         vms_playback.set_image_size(vms_config['img_width'], vms_config['img_height'])
@@ -403,7 +419,7 @@ async def fetch_archived_file_image(file_id: int, timestamp: int, ctx: Context =
         image_data = img_byte_arr.getvalue()
 
         logger.debug(f"Fetched archived file image for file_id {file_id} at timestamp {timestamp}.")
-        return Image(data=image_data, format="jpeg")
+        return Image(data=image_data, format="jpeg").to_image_content()
     else:
         error_msg = f"Failed to initialize connection to retrieve archived file image for file_id {file_id}."
         if ctx: ctx.error(error_msg)
@@ -458,7 +474,7 @@ async def get_ptz_preset(ch_no: int, ctx: Context = None) -> Dict[str, Any]:
         if vms_utils.init(vms_config['url'], vms_config['port'], vms_config['access_id'], vms_config['access_pw']):
             preset = vms_utils.get_ptz_preset(ch_no)
             if preset and preset["status"] == "ok":
-                logger.debug(f"Retrieved PTZ presets for channel {ch_no}: presetNo={preset["no"]}")
+                logger.debug(f"Retrieved PTZ presets for channel {ch_no}: presetNo={preset['no']}")
                 return preset
             else:
                 error_msg = preset["status"]
@@ -653,59 +669,10 @@ async def main_test():
         print_header("get_channels")
         channels = await get_channels()
         print_data(channels)
-    if False:
-        print_header("get_recording_dates")
-        recordingDates = await get_recording_dates(2026, 3)
-        print_data(recordingDates)
-    if False:
-        print_header("get_recording_times")
-        recordingTimes = await get_recording_times(5, 0, 2026, 3, 19)
-        print_data(recordingTimes)
-    if False:
-        print_header("get_events")
-        events = await get_events(7,2026,3,19)
-        print_data(events)
-    if False:
-        print_header("get_archived_files")
-        files = await get_archived_files()
-        print_data(files)
-        if True:
-            for file in files:
-                fi = file["file_id"]
-                ts = file["timestamp"] + 2
-                print (f"file: {fi} / timestamp={ts}")
-                #vms_utils.show_file_playback(file["file_id"], ts)
-                await show_archived_file_playback_video(fi, ts)
-                img = await fetch_archived_file_image(fi, ts)
-                save_image(img, f"archived-{fi}-{ts}.jpg")
-                time.sleep(1)
-    if False:
-        for i in range(28):
-            await show_playback_video(5, 0, 2026, 3, 19, 7, 0, i*2)
-            time.sleep(1)
-    if False: # Live subIdx test
-        await show_live_video(2, 0)
-        time.sleep(1)
-        await show_live_video(2, 1)
-    if True: # Playback subIdx test
-        await show_playback_video(2, 0, 2026, 3, 19, 7, 0, 0)
-        time.sleep(1)
-        await show_playback_video(2, 1, 2026, 3, 19, 7, 0, 0)
-    if False:
-        img = await fetch_live_image(2, 0)
-        save_image(img, "vms_image-0.jpg")
-        img = await fetch_live_image(2, 1)
-        save_image(img, "vms_image-1.jpg")
-    if False:
-        img = await fetch_recorded_image(2, 0, 2026, 3, 19, 7, 0, 0)
-        save_image(img, "vms_image-0.jpg")
-        img = await fetch_recorded_image(2, 1, 2026, 3, 19, 7, 0, 0)
-        save_image(img, "vms_image-1.jpg")
 
 # Run the async main function
 if __name__ == "__main__":
-    if False:
+    if True:
         mcp.run(transport='stdio')
-        #mcp.run(transport='sse')
     else:
         asyncio.run(main_test())
